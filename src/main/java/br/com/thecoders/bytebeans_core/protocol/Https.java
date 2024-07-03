@@ -5,7 +5,7 @@
 
 package br.com.thecoders.bytebeans_core.protocol;
 
-import br.com.thecoders.bytebeans_core.core.HttpContextHandler;
+import br.com.thecoders.bytebeans_core.core.HttpContextHolder;
 import com.sun.net.httpserver.HttpServer;
 import com.sun.net.httpserver.HttpsConfigurator;
 import com.sun.net.httpserver.HttpsServer;
@@ -70,7 +70,11 @@ public class Https extends BaseHttp {
         ExecutorService executorService = Executors.newVirtualThreadPerTaskExecutor();
         httpsServer.setExecutor(executorService);
 
-        for (HttpContextHandler httpContext : getHttpContexts()) {
+        for (HttpContextHolder httpContext : getFileHttpContexts()) {
+            httpsServer.createContext(httpContext.path(), httpContext.httpHandler());
+        }
+
+        for (HttpContextHolder httpContext : getApiHttpContexts()) {
             httpsServer.createContext(httpContext.path(), httpContext.httpHandler());
         }
 

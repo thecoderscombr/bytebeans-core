@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "br.com.thecoders.bytebeans_core"
-version = "0.1"
+version = "0.2"
 
 repositories {
     mavenCentral()

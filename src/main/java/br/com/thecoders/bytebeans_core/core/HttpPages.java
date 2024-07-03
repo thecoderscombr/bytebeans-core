@@ -36,16 +36,16 @@ public class HttpPages {
         update(2L, TimeUnit.SECONDS);
     }
 
-    private void updateContexts(CopyOnWriteArraySet<HttpContextHandler> httpContexts,
+    private void updateContexts(CopyOnWriteArraySet<HttpContextHolder> httpContextHolders,
                                 Map<String, File> pagesFiles,
                                 HttpServer server,
                                 Path rootDirectory) {
 
 
-        for (HttpContextHandler httpContext : httpContexts) {
+        for (HttpContextHolder httpContext : httpContextHolders) {
             String toBackSlash = httpContext.path().replace("/", "\\");
             if (!pagesFiles.containsKey(toBackSlash)) {
-                httpContexts.remove(httpContext);
+                httpContextHolders.remove(httpContext);
                 server.removeContext(httpContext.path());
             }
         }
@@ -53,32 +53,23 @@ public class HttpPages {
         pagesFiles.clear();
 
         for (Map.Entry<String, File> entry : RootDirectoryHandler.getFiles(pagesFiles, rootDirectory).entrySet()) {
-            if (entry.getValue().toPath().toString().equalsIgnoreCase(rootDirectory + File.separator + "index.html")) {
-                if (!httpContexts.stream().map(HttpContextHandler::path).toList().contains("/")) {
-                    HttpContext context = server.createContext("/", rootDirectoryHandler.httpHandler(entry.getValue()));
-                    httpContexts.add(new HttpContextHandler(context.getPath(), context.getHandler()));
-                }
-            }
-
             String toForwardSlash = entry.getKey().replace("\\", "/");
-            if (!httpContexts.stream().map(HttpContextHandler::path).toList().contains(toForwardSlash)) {
+            if (!httpContextHolders.stream().map(HttpContextHolder::path).toList().contains(toForwardSlash)) {
                 HttpContext context = server.createContext(toForwardSlash, rootDirectoryHandler.httpHandler(entry.getValue()));
-                httpContexts.add(new HttpContextHandler(context.getPath(), context.getHandler()));
+                httpContextHolders.add(new HttpContextHolder(context.getPath(), context.getHandler()));
             }
         }
 
-        if (httpContexts.stream().map(HttpContextHandler::path).toList().contains("/")) {
+        if (httpContextHolders.stream().map(HttpContextHolder::path).toList().contains("/")) {
+            httpContextHolders.remove(new HttpContextHolder("/", exchange -> {}));
             server.removeContext("/");
         }
 
         try {
-
-            HttpContextHandler httpContextHandler = new HttpContextHandler("/", rootDirectoryHandler
+            HttpContextHolder httpContextHolder = new HttpContextHolder("/", rootDirectoryHandler
                     .httpHandler(new RootFileCreator().create(pagesFiles, rootDirectory)));
-
-            server.createContext(httpContextHandler.path(), httpContextHandler.httpHandler());
-            httpContexts.add(httpContextHandler);
-
+            server.createContext(httpContextHolder.path(), httpContextHolder.httpHandler());
+            httpContextHolders.add(httpContextHolder);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -86,7 +77,7 @@ public class HttpPages {
 
     public void update(long period, TimeUnit timeUnit) {
         scheduledExecutorService.scheduleAtFixedRate(() ->
-                        updateContexts(baseHttp.httpContexts, pagesFiles, baseHttp.getServer(), rootDirectory),
+                        updateContexts(baseHttp.fileHttpContexts, pagesFiles, baseHttp.getServer(), rootDirectory),
                 0L, period, timeUnit);
     }
 }

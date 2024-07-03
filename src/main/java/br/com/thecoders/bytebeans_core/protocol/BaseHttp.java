@@ -5,7 +5,7 @@
 
 package br.com.thecoders.bytebeans_core.protocol;
 
-import br.com.thecoders.bytebeans_core.core.HttpContextHandler;
+import br.com.thecoders.bytebeans_core.core.HttpContextHolder;
 import com.sun.net.httpserver.HttpServer;
 
 import java.util.concurrent.CopyOnWriteArraySet;
@@ -18,9 +18,17 @@ public abstract class BaseHttp {
 
     public abstract HttpServer getServer();
 
-    public final CopyOnWriteArraySet<HttpContextHandler> httpContexts = new CopyOnWriteArraySet<>();
+    public final CopyOnWriteArraySet<HttpContextHolder> fileHttpContexts = new CopyOnWriteArraySet<>();
 
-    public CopyOnWriteArraySet<HttpContextHandler> getHttpContexts() {
-        return httpContexts;
+    public CopyOnWriteArraySet<HttpContextHolder> getFileHttpContexts() {
+        return fileHttpContexts;
     }
+
+
+    public final CopyOnWriteArraySet<HttpContextHolder> apiHttpContexts = new CopyOnWriteArraySet<>();
+
+    public CopyOnWriteArraySet<HttpContextHolder> getApiHttpContexts() {
+        return apiHttpContexts;
+    }
+
 }

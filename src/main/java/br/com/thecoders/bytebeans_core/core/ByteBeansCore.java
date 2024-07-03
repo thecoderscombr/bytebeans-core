@@ -11,10 +11,10 @@ import br.com.thecoders.bytebeans_core.yml.BBYml;
 import com.sun.net.httpserver.HttpHandler;
 
 import java.io.File;
-import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
-import java.net.URISyntaxException;
-import java.net.URL;
+import java.io.InputStream;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.KeyStore;
 import java.util.HashSet;
@@ -35,7 +35,7 @@ public class ByteBeansCore {
     private Http httpInstance;
     private Https httpsInstance;
     private HttpPages httpPagesInstance;
-    private final Set<HttpContextHandler> httpContextHandler = new HashSet<>();
+    private final Set<HttpContextHolder> httpContextHolder = new HashSet<>();
 
     private static void setSettings(File settings) {
         Map<String, Object> stringObjectMap = new BBYml().read(settings);
@@ -65,7 +65,7 @@ public class ByteBeansCore {
     }
 
     public void addHttpContext(String httpPath, HttpHandler httpHandler) {
-        httpContextHandler.add(new HttpContextHandler(httpPath, httpHandler));
+        httpContextHolder.add(new HttpContextHolder(httpPath, httpHandler));
     }
 
     public void start(ServerType serverType) {
@@ -83,8 +83,8 @@ public class ByteBeansCore {
 
     private void startHttp(File settings) {
         setSettings(settings);
-        for (HttpContextHandler contextHandler : httpContextHandler) {
-            getHttpInstance().getHttpContexts().add(contextHandler);
+        for (HttpContextHolder contextHandler : httpContextHolder) {
+            getHttpInstance().getApiHttpContexts().add(contextHandler);
         }
         getHttpInstance().start(hostnameHttp, portHttp);
     }
@@ -97,8 +97,8 @@ public class ByteBeansCore {
         setSettings(settings);
         KeyStore keyStore = getHttpsInstance().loadKeyStore("PKCS12", new File(keystorePath), keystorePassword);
         getHttpsInstance().setSslContext(keyStore, keystorePassword);
-        for (HttpContextHandler contextHandler : httpContextHandler) {
-            getHttpsInstance().getHttpContexts().add(contextHandler);
+        for (HttpContextHolder contextHandler : httpContextHolder) {
+            getHttpsInstance().getApiHttpContexts().add(contextHandler);
         }
         getHttpsInstance().start(hostnameHttps, portHttps);
     }
@@ -109,6 +109,11 @@ public class ByteBeansCore {
 
     private void startPagesHttp(File settings) {
         setSettings(settings);
+
+        for (HttpContextHolder contextHandler : httpContextHolder) {
+            getHttpInstance().getApiHttpContexts().add(contextHandler);
+        }
+
         Path rootDir = Path.of(rootDirHttp);
         getHttpPagesInstance().startPages(hostnameHttp, portHttp, rootDir, getHttpInstance());
     }
@@ -121,20 +126,34 @@ public class ByteBeansCore {
         setSettings(settings);
         KeyStore keyStore = getHttpsInstance().loadKeyStore("PKCS12", new File(keystorePath), keystorePassword);
         getHttpsInstance().setSslContext(keyStore, keystorePassword);
-        for (HttpContextHandler contextHandler : httpContextHandler) {
-            getHttpsInstance().getHttpContexts().add(contextHandler);
+
+        for (HttpContextHolder contextHandler : httpContextHolder) {
+            getHttpsInstance().getApiHttpContexts().add(contextHandler);
         }
+
         Path rootDir = Path.of(rootDirHttps);
         getHttpPagesInstance().startPages(hostnameHttps, portHttps, rootDir, getHttpsInstance());
     }
 
     private static Path getSettingsPath() {
-        URL settingsUrl = ByteBeansCore.class.getClassLoader().getResource("settings.yml");
-        try {
-            if (settingsUrl == null) throw new FileNotFoundException("settings.yml file not found");
-            return Path.of(settingsUrl.toURI());
-        } catch (IOException | URISyntaxException e) {
-            throw new RuntimeException(e);
+        InputStream inputStream = ByteBeansCore.class.getClassLoader().getResourceAsStream("settings.yml");
+        File parentFile = new File(ByteBeansCore.class.getProtectionDomain().getCodeSource().getLocation().getPath())
+                .getParentFile();
+
+        File settingsFile = new File(parentFile, "settings.yml");
+
+        if (Files.notExists(settingsFile.toPath())) {
+            try {
+                Files.createFile(settingsFile.toPath());
+                FileOutputStream fileOutputStream = new FileOutputStream(settingsFile);
+                fileOutputStream.write(inputStream.readAllBytes());
+                fileOutputStream.flush();
+                fileOutputStream.close();
+                inputStream.close();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
         }
+        return settingsFile.toPath();
     }
 }
