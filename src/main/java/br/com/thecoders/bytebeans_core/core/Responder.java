@@ -10,14 +10,18 @@ import com.sun.net.httpserver.HttpExchange;
 import java.io.IOException;
 import java.io.OutputStream;
 
-public class Responder{
+public class Responder {
 
-    public static void replyOk(HttpExchange exchange, String response) {
+    public Responder() {
+        throw new AssertionError("Not instantiable");
+    }
+
+    public static void reply(HttpExchange exchange, int status, final byte[] bytes) {
 
         try {
-            exchange.sendResponseHeaders(200, response.length());
+            exchange.sendResponseHeaders(status, bytes.length);
             OutputStream responseBody = exchange.getResponseBody();
-            responseBody.write(response.getBytes());
+            responseBody.write(bytes);
             responseBody.flush();
             responseBody.close();
         } catch (IOException e) {
@@ -25,4 +29,8 @@ public class Responder{
         }
     }
 
+
+    public static void reply(HttpExchange exchange, int status, String response) {
+        reply(exchange, status, response.getBytes());
+    }
 }

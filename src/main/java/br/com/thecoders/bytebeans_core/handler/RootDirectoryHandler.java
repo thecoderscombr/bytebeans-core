@@ -5,6 +5,8 @@
 
 package br.com.thecoders.bytebeans_core.handler;
 
+import br.com.thecoders.bytebeans_core.core.HttpPages;
+import br.com.thecoders.bytebeans_core.core.Responder;
 import com.sun.net.httpserver.HttpHandler;
 
 import java.io.*;
@@ -54,28 +56,16 @@ public class RootDirectoryHandler {
             }
 
             String uri = exchange.getRequestURI().getPath();
-            String filePath = file.getPath().replace(root, "").replace("\\", "/");
 
-            if (!uri.equals("/") && !uri.equals(filePath)) {
-                exchange.sendResponseHeaders(404, 9);
-
-                OutputStream outputStream = exchange.getResponseBody();
-                outputStream.write("NOT FOUND".getBytes());
-                outputStream.flush();
-                outputStream.close();
-                exchange.close();
+            if (!uri.equals("/") && !HttpPages.control.contains(uri)) {
+                Responder.reply(exchange, 404, "404 - NOT FOUND");
                 return;
             }
 
             InputStream inputStream = new FileInputStream(file);
             byte[] bytes = inputStream.readAllBytes();
-            exchange.sendResponseHeaders(200, bytes.length);
-            OutputStream outputStream = exchange.getResponseBody();
-            outputStream.write(bytes);
+            Responder.reply(exchange, 200, bytes);
             inputStream.close();
-            outputStream.flush();
-            outputStream.close();
-            exchange.close();
         };
     }
 

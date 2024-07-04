@@ -11,16 +11,19 @@ import com.sun.net.httpserver.HttpContext;
 import com.sun.net.httpserver.HttpServer;
 
 import java.io.File;
-import java.io.IOException;
 import java.nio.file.Path;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 public class HttpPages {
+
+    public static final Set<String> control = new HashSet<>();
 
     private Path rootDirectory;
     private BaseHttp baseHttp;
@@ -41,6 +44,8 @@ public class HttpPages {
                                 HttpServer server,
                                 Path rootDirectory) {
 
+        control.clear();
+        control.addAll(httpContextHolders.stream().map(HttpContextHolder::path).toList());
 
         for (HttpContextHolder httpContext : httpContextHolders) {
             String toBackSlash = httpContext.path().replace("/", "\\");
@@ -52,26 +57,41 @@ public class HttpPages {
 
         pagesFiles.clear();
 
-        for (Map.Entry<String, File> entry : RootDirectoryHandler.getFiles(pagesFiles, rootDirectory).entrySet()) {
-            String toForwardSlash = entry.getKey().replace("\\", "/");
-            if (!httpContextHolders.stream().map(HttpContextHolder::path).toList().contains(toForwardSlash)) {
-                HttpContext context = server.createContext(toForwardSlash, rootDirectoryHandler.httpHandler(entry.getValue()));
-                httpContextHolders.add(new HttpContextHolder(context.getPath(), context.getHandler()));
-            }
-        }
 
         if (httpContextHolders.stream().map(HttpContextHolder::path).toList().contains("/")) {
-            httpContextHolders.remove(new HttpContextHolder("/", exchange -> {}));
+            httpContextHolders.remove(new HttpContextHolder("/", exchange -> {
+            }));
             server.removeContext("/");
         }
 
-        try {
-            HttpContextHolder httpContextHolder = new HttpContextHolder("/", rootDirectoryHandler
-                    .httpHandler(new RootFileCreator().create(pagesFiles, rootDirectory)));
-            server.createContext(httpContextHolder.path(), httpContextHolder.httpHandler());
-            httpContextHolders.add(httpContextHolder);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+        for (Map.Entry<String, File> entry : RootDirectoryHandler.getFiles(pagesFiles, rootDirectory).entrySet()) {
+            String toForwardSlash = entry.getKey().replace("\\", "/");
+
+            String c = toForwardSlash.substring(0, toForwardSlash.lastIndexOf('/'));
+            String last = toForwardSlash.substring(toForwardSlash.lastIndexOf('/'));
+
+            if (last.equalsIgnoreCase("/index.html") && !toForwardSlash.equalsIgnoreCase("/index.html")) {
+                if (!httpContextHolders.stream().map(HttpContextHolder::path).toList().contains(c)) {
+                    HttpContext context = server.createContext(c, rootDirectoryHandler.httpHandler(entry.getValue()));
+                    httpContextHolders.add(new HttpContextHolder(c, context.getHandler()));
+                    control.add(c);
+                }
+            }
+
+            if (!httpContextHolders.stream().map(HttpContextHolder::path).toList().contains(toForwardSlash)) {
+                HttpContext context = server.createContext(toForwardSlash, rootDirectoryHandler.httpHandler(entry.getValue()));
+                httpContextHolders.add(new HttpContextHolder(toForwardSlash, context.getHandler()));
+                control.add(toForwardSlash);
+            }
+
+
+            if (entry.getValue().toPath().toString().equalsIgnoreCase(rootDirectory + File.separator + "index.html")) {
+                if (!httpContextHolders.stream().map(HttpContextHolder::path).toList().contains("/")) {
+                    HttpContext context = server.createContext("/", rootDirectoryHandler.httpHandler(entry.getValue()));
+                    httpContextHolders.add(new HttpContextHolder(context.getPath(), context.getHandler()));
+                }
+            }
+
         }
     }
 

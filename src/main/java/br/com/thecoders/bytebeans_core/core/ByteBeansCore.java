@@ -77,6 +77,15 @@ public class ByteBeansCore {
         }
     }
 
+    public void start(ServerType serverType, File settings) {
+        switch (serverType) {
+            case HTTP -> startHttp(settings);
+            case HTTP_PAGES -> startPagesHttp(settings);
+            case HTTPS -> startHttps(settings);
+            case HTTPS_PAGES -> startPagesHttps(settings);
+        }
+    }
+
     private void startHttp() {
         startHttp(getSettingsPath().toFile());
     }
