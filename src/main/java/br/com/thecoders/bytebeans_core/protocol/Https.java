@@ -67,7 +67,7 @@ public class Https extends BaseHttp {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-        ExecutorService executorService = Executors.newVirtualThreadPerTaskExecutor();
+        ExecutorService executorService = Executors.newCachedThreadPool();
         httpsServer.setExecutor(executorService);
 
         for (HttpContextHolder httpContext : getFileHttpContexts()) {

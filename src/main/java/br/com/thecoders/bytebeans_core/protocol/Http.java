@@ -30,7 +30,7 @@ public class Http extends BaseHttp {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-        ExecutorService executorService = Executors.newVirtualThreadPerTaskExecutor();
+        ExecutorService executorService = Executors.newCachedThreadPool();
         httpServer.setExecutor(executorService);
 
         for (HttpContextHolder httpContext : getFileHttpContexts()) {
